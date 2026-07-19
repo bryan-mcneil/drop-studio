@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Kokoro model weights (~340 MB) — fetched by `python -m studio setup --models`
+models/
+
+# Per-day pipeline output (storyboards, wavs, mp4s)
+work/
+
+# Music tracks are licensed per-machine; only the manifest is tracked
+assets/music/*
+!assets/music/manifest.json
+!assets/music/README.md
+.github/workflows/

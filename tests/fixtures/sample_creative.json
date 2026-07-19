@@ -1,0 +1,18 @@
+{
+    "_note": "The creative fields Claude writes per video (Phase 3 adds the /drop-video skill). Everything absent falls back to deterministic defaults from the post.",
+    "hook": "Stop paying list price for robot vacuums",
+    "hook_vo": "Stop paying list price for robot vacuums. The Roborock Q7 M5 Plus is a lesson in why.",
+    "product_vo": "It vacuums, mops, and empties itself into a dock bag that lasts up to nine weeks.",
+    "feature_vo": {
+        "1": "The dock swallows seven to nine weeks of dirt before you ever touch a bag.",
+        "2": "Ten thousand pascals of suction handles hard floors and pet hair with ease.",
+        "3": "LiDAR mapping with no-go zones, and none of it needs a subscription."
+    },
+    "feature_detail": {
+        "1": "2.7L bag in the base. Hands-free for weeks, not days.",
+        "2": "Strong on hard floors and low-pile rugs. Okay on thick carpet.",
+        "3": "Accurate multi-floor maps, room-by-room cleaning, free app."
+    },
+    "price_vo": "It launched at three fifty nine, but the street price tells the real story. Right now it is two forty nine ninety nine, below the ninety day average. That's a good price.",
+    "cta_vo": "Full review and live price history at gadget drop dot tech. Link in the description."
+}

@@ -1,0 +1,27 @@
+[project]
+name = "drop-studio"
+version = "0.1.0"
+description = "Automated YouTube Shorts renderer for gadgetdrop.tech daily reviews (Tier 0 motion graphics + Tier 1 self-hosted TTS)"
+requires-python = ">=3.12"
+dependencies = [
+    "pillow>=10.4",
+    "numpy>=2.0",
+    "soundfile>=0.12",
+    "fonttools>=4.53",
+    "brotli>=1.1",
+    "imageio-ffmpeg>=0.5",
+    "kokoro-onnx>=0.4",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.2"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: full-pipeline tests that render video (deselect with '-m \"not slow\"')",
+    "voice: tests that need the Kokoro model files in models/",
+]

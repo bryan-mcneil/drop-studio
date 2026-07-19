@@ -1,0 +1,40 @@
+{
+    "name": "short-review-v1",
+    "resolution": [1080, 1920],
+    "fps": 30,
+    "colors": {
+        "bg_top": "#111827",
+        "bg_bottom": "#1e1b4b",
+        "surface": "#ffffff",
+        "surface_alt": "#eef2ff",
+        "ink": "#111827",
+        "ink_invert": "#f9fafb",
+        "muted": "#6b7280",
+        "muted_invert": "#9ca3af",
+        "brand": "#4f46e5",
+        "brand_deep": "#4338ca",
+        "brand_light": "#e0e7ff",
+        "accent": "#f97316",
+        "positive": "#059669",
+        "warning": "#d97706",
+        "negative": "#dc2626",
+        "caption_ink": "#ffffff",
+        "caption_bg": "#111827"
+    },
+    "safe_area": {"top": 200, "bottom": 460, "side": 64},
+    "caption": {"y": 1490, "size": 58, "max_words": 4, "pad": 26},
+    "watermark": "gadgetdrop.tech",
+    "qa": {
+        "min_duration_s": 45,
+        "max_duration_s": 90,
+        "max_size_mb": 100,
+        "target_lufs": -14.0,
+        "lufs_tolerance": 1.5
+    },
+    "verdicts": {
+        "lowest": {"label": "LOWEST TRACKED PRICE", "color": "positive"},
+        "good": {"label": "GOOD PRICE", "color": "positive"},
+        "typical": {"label": "TYPICAL PRICE", "color": "warning"},
+        "elevated": {"label": "ELEVATED, WAIT", "color": "negative"}
+    }
+}

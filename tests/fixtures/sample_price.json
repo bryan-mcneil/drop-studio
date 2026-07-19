@@ -1,0 +1,20 @@
+{
+    "_note": "SAMPLE fixture for tests + the demo render. Real videos get this file from gadget-drop's drop:video-feed export (Phase 3) — never hand-write one for a published video.",
+    "current": 249.99,
+    "list_price": 359.99,
+    "checked_at": "2026-07-19",
+    "verdict": "good",
+    "low90": 229.99,
+    "avg90": 284.5,
+    "high90": 359.99,
+    "series": [
+        ["2026-04-20", 359.99],
+        ["2026-05-06", 299.99],
+        ["2026-05-18", 259.99],
+        ["2026-06-01", 359.99],
+        ["2026-06-10", 249.99],
+        ["2026-06-24", 269.99],
+        ["2026-07-08", 229.99],
+        ["2026-07-15", 249.99]
+    ]
+}
