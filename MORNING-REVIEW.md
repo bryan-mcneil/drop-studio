@@ -10,7 +10,7 @@ arrive with the Phase 3 feed; `--image path.jpg` already works.)
 ## What exists now
 
 New repo `drop-studio` (sibling of gadget-drop), pushed to GitHub
-(`bryan-mcneil/drop-studio`, private) with CI. Phases 1 and 2 of
+(`bryan-mcneil/drop-studio`, private). Phases 1 and 2 of
 `docs/plans/07-video-pipeline.md` are complete — see `docs/PLAN.md` phase log.
 **37 tests, all green** (schema, storyboard builder, captions, timeline,
 music, layout probe, golden frames, voice, slow e2e that renders a real mp4).
@@ -74,7 +74,11 @@ real export (Phase 3) — the fixture file says so in its `_note`.
   phonetic spelling in the creative VO fields (that's what they're for).
 - Feature-scene optional images aren't rendered yet (title + detail only) —
   deliberate scope cut; the storyboard field exists.
-- CI golden tolerance is looser (6.0 vs 3.0) for Linux FreeType differences —
-  first CI run will tell us if that's enough.
+- **CI couldn't be pushed**: the gh CLI token lacks the `workflow` scope, so
+  `.github/workflows/ci.yml` sits locally (gitignored for now). To enable:
+  `gh auth refresh -h github.com -s workflow`, then remove the
+  `.github/workflows/` line from `.gitignore` and commit the file. The
+  workflow runs the non-voice suite with a looser golden tolerance (6.0 vs
+  3.0) for Linux FreeType differences.
 - The synth bed is serviceable, not memorable. A one-time $20 loop pack (or
   YouTube Audio Library picks) into `assets/music/` is the cheap upgrade.
