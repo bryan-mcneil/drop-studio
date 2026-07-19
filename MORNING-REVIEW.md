@@ -1,5 +1,20 @@
 # Morning review — drop-studio Phases 1+2 (built overnight 2026-07-19)
 
+## Design v2 (later the same session, via /frontend-design)
+
+The first pass looked competent but template-generic, so the Short template
+got a real identity pass. The signature: **the ambient price ladder** — the
+product's actual 90-day series drawn faintly across the background of every
+scene, revealing in sync with playback (real data only; no series, no line).
+Supporting system: **orange is reserved for live prices/deals** (color
+encodes "this is the price"); deal + verdict chips are **price-tag shapes**
+(pointed end, punched hole); the feature counter is **three ascending step
+blocks**; the chart gained a dashed **AVG line** (the verdict logic, visible),
+a tracked-caps eyebrow with pulsing record dot, and a top-right orange NOW
+price; the hook went left-aligned editorial with a two-step stair rule; the
+watermark is now the GadgetDrop wordmark. Goldens regenerated; 38 tests
+green; same QA results (53.0s, −14.4 LUFS).
+
 **Watch this first:** `work/demo/final.mp4` — a 53s Short for the Roborock
 Q7 M5+ (today's review), rendered end-to-end with Kokoro voiceover, burned
 captions, animated 90-day sparkline + GOOD PRICE verdict, synth music bed,

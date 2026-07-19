@@ -36,6 +36,10 @@ class RenderContext:
         self.size = theme.resolution
         self.bg = D.gradient_bg(self.size, theme.color("bg_top"), theme.color("bg_bottom"))
         self.assets: dict[int, SceneAssets] = {}
+        # The ambient ladder: the product's real price series, drawn faintly
+        # behind every scene, revealing over the whole video. Real data only —
+        # no series, no line.
+        self.ladder_xy: list | None = None
         for slot in timeline.slots:
             a = SceneAssets()
             scene = slot.scene
@@ -43,6 +47,7 @@ class RenderContext:
                 a.image = D.load_product_image(scene["image"])
             if scene["type"] == "price" and scene.get("series"):
                 a.series_xy = normalize_series(scene["series"], scene.get("checked_at"))
+                self.ladder_xy = a.series_xy
             self.assets[slot.index] = a
 
 
@@ -81,6 +86,7 @@ def fmt_price(value) -> str:
 def render_frame(ctx: RenderContext, t: float) -> Image.Image:
     frame = ctx.bg.copy()
     d = ImageDraw.Draw(frame)
+    _ambient_ladder(ctx, d, t)
     slot = ctx.tl.slot_at(t)
     tl = t - slot.start
     scene = slot.scene
@@ -91,19 +97,34 @@ def render_frame(ctx: RenderContext, t: float) -> Image.Image:
     return frame
 
 
+def _ambient_ladder(ctx: RenderContext, d: ImageDraw.ImageDraw, t: float):
+    if not ctx.ladder_xy or len(ctx.ladder_xy) < 2:
+        return
+    w, h = ctx.size
+    top, bottom = h * 0.42, h * 0.68  # mid-frame band, occluded by cards
+    color = D.mix(ctx.theme.color("bg_bottom"), ctx.theme.color("brand"), 0.38)
+    reveal = D.clamp01(t / max(ctx.tl.duration, 1e-6))
+    pts = [(-30 + u * (w + 60), bottom - v * (bottom - top)) for u, v in ctx.ladder_xy]
+    n = 2 + int((len(pts) - 2) * reveal)
+    d.line(pts[:n], fill=color, width=3)
+
+
 def _watermark(ctx, d, t):
     th = ctx.theme
     slot = ctx.tl.slot_at(t)
     if slot.scene["type"] == "cta":
         return  # CTA scene is the watermark
-    fnt = font(600, 34)
-    text = th.watermark
+    fnt = font(700, 36)
     w, h = ctx.size
     alpha = D.anim(t, 0.8, 0.6)
     if alpha <= 0:
         return
-    color = D.mix(th.color("bg_top"), th.color("muted_invert"), alpha)
-    d.text(((w - fnt.getlength(text)) / 2, 96), text, font=fnt, fill=color)
+    gw, dw = fnt.getlength("Gadget"), fnt.getlength("Drop")
+    x = (w - gw - dw) / 2
+    d.text((x, 92), "Gadget", font=fnt,
+           fill=D.mix(th.color("bg_top"), (255, 255, 255), alpha * 0.62))
+    d.text((x + gw, 92), "Drop", font=fnt,
+           fill=D.mix(th.color("bg_top"), th.color("accent"), alpha * 0.8))
 
 
 def _caption(ctx, frame, t):
@@ -134,25 +155,32 @@ def _caption(ctx, frame, t):
 def draw_hook(ctx, frame, d, scene, slot, tl):
     th = ctx.theme
     w, h = ctx.size
+    x = th.safe["side"]
     fnt, lines, _ = D.fit_text(th, "hook", "text", scene["text"])
-    block_h = D.text_block_height(lines, fnt, 14)
-    y = (h - block_h) / 2 - 160
+    block_h = D.text_block_height(lines, fnt, 12)
+    y = (h - block_h) / 2 - 170
     ascent, descent = fnt.getmetrics()
     for i, line in enumerate(lines):
         p = D.anim(tl, 0.12 * i, 0.5)
         if p <= 0:
             continue
-        ly = y + i * (ascent + descent + 14) + (1 - p) * 60
+        ly = y + i * (ascent + descent + 12) + (1 - p) * 60
         color = D.mix(th.color("bg_top"), th.color("ink_invert"), p)
-        d.text(((w - fnt.getlength(line)) / 2, ly), line, font=fnt, fill=color)
+        d.text((x, ly), line, font=fnt, fill=color)
+    # step-rule: a contiguous two-step orange stair instead of a centered underline
     bar_p = D.anim(tl, 0.5, 0.5)
     if bar_p > 0:
-        bw = 240 * bar_p
-        d.rounded_rectangle(((w - bw) / 2, y + block_h + 60, (w + bw) / 2, y + block_h + 74),
-                            radius=7, fill=th.color("accent"))
+        by = y + block_h + 58
+        w1 = 140 * min(bar_p / 0.6, 1.0)
+        d.rectangle((x, by + 14, x + w1, by + 28), fill=th.color("accent"))
+        if bar_p > 0.6:
+            w2 = 96 * (bar_p - 0.6) / 0.4
+            d.rectangle((x + 140, by, x + 140 + w2, by + 14), fill=th.color("accent"))
     chip_p = D.anim(tl, 0.9, 0.5, ease=D.ease_out_back)
     if chip_p > 0 and scene.get("sub"):
-        D.pill(d, w // 2, int(y + block_h + 190), scene["sub"], font(700, 46), 38, 20,
+        chip_fnt = font(700, 46)
+        chip_w = chip_fnt.getlength(scene["sub"]) + 76
+        D.pill(d, int(x + chip_w / 2), int(y + block_h + 176), scene["sub"], chip_fnt, 38, 20,
                th.color("brand_light"), th.color("brand_deep"), scale=chip_p)
 
 
@@ -170,7 +198,7 @@ def draw_product(ctx, frame, d, scene, slot, tl):
     name_fnt, name_lines, _ = D.fit_text(th, "product", "product_name", scene["product_name"])
     ny = D.draw_text_lines(cd, name_lines, name_fnt, 60, 54, th.color("ink"), box_w=card_w - 120)
     if scene.get("rating"):
-        D.star_row(cd, card_w // 2, ny + 26, scene["rating"], 42, th.color("warning"), th.color("brand_light"))
+        D.star_row(cd, card_w // 2, ny + 26, scene["rating"], 42, th.color("warning"), th.color("star_empty"))
         ny += 60
 
     img_box = (60, ny + 20, card_w - 60, card_h - 250)
@@ -187,24 +215,25 @@ def draw_product(ctx, frame, d, scene, slot, tl):
 
     if scene.get("price") is not None:
         price_fnt = font(800, 92)
-        py = card_h - 200
+        py = card_h - 195
         price_txt = fmt_price(scene["price"])
-        px = 70
-        cd.text((px, py), price_txt, font=price_fnt, fill=th.color("ink"))
-        px += price_fnt.getlength(price_txt) + 34
+        cd.text((70, py), price_txt, font=price_fnt, fill=th.color("accent"))
         if scene.get("list_price") and scene["list_price"] > scene["price"]:
-            lp_fnt = font(600, 52)
+            # right column: struck list price on top, deal tag beneath
+            lp_fnt = font(600, 46)
             lp_txt = fmt_price(scene["list_price"])
-            lp_y = py + 40
-            cd.text((px, lp_y), lp_txt, font=lp_fnt, fill=th.color("muted"))
-            mid_y = lp_y + lp_fnt.getmetrics()[0] // 2
-            cd.line((px - 6, mid_y, px + lp_fnt.getlength(lp_txt) + 6, mid_y),
-                    fill=th.color("negative"), width=5)
+            lp_x = card_w - 70 - lp_fnt.getlength(lp_txt)
+            cd.text((lp_x, py + 2), lp_txt, font=lp_fnt, fill=th.color("muted"))
+            mid_y = py + 2 + lp_fnt.getmetrics()[0] // 2
+            cd.line((lp_x - 6, mid_y, card_w - 64, mid_y), fill=th.color("negative"), width=5)
             pct = round((1 - scene["price"] / scene["list_price"]) * 100)
             if pct >= 5:
+                chip_fnt = font(800, 44)
+                asc, desc = chip_fnt.getmetrics()
+                chip_w = chip_fnt.getlength(f"-{pct}%") + 52 + (asc + desc + 28) * 0.52
                 pill_p = D.anim(tl, 1.0, 0.45, ease=D.ease_out_back)
-                D.pill(cd, card_w - 150, py + 55, f"-{pct}%", font(800, 48), 30, 16,
-                       th.color("accent"), (255, 255, 255), scale=pill_p)
+                D.tag_chip(cd, int(card_w - 70 - chip_w / 2), py + 112, f"-{pct}%",
+                           chip_fnt, 26, 14, th.color("accent"), (255, 255, 255), scale=pill_p)
     frame.paste(card, (cx, int(cy)), D.rounded_mask((card_w, card_h), 48))
 
 
@@ -212,9 +241,12 @@ def draw_feature(ctx, frame, d, scene, slot, tl):
     th = ctx.theme
     w, h = ctx.size
     if scene.get("count"):
-        D.pill(d, w // 2, 300, f"{scene.get('index', 1)} / {scene['count']}", font(700, 44),
-               34, 16, th.color("brand"), (255, 255, 255), scale=D.anim(tl, 0.0, 0.4, D.ease_out_back))
-    card_w, card_h = w - th.safe["side"] * 2, 640
+        p = D.anim(tl, 0.0, 0.4)
+        if p > 0:
+            todo = D.mix(th.color("bg_top"), (255, 255, 255), 0.42)
+            D.step_progress(d, w // 2, 330, scene["count"], scene.get("index", 1),
+                            th.color("brand"), todo, (255, 255, 255))
+    card_w, card_h = w - th.safe["side"] * 2, 580
     slide = D.anim(tl, 0.1, 0.5)
     cx = th.safe["side"] + (1 - slide) * w * 0.6
     cy = 560
@@ -251,16 +283,39 @@ def draw_price(ctx, frame, d, scene, slot, tl):
     asset = ctx.assets[slot.index]
 
     if asset.series_xy:
-        spark_box = (70, 150, card_w - 70, 560)
-        progress = D.anim(tl, 0.4, slot.duration * 0.42)
-        end_pt = D.draw_sparkline(cd, spark_box, asset.series_xy, progress,
-                                  th.color("brand"), th.color("brand_light"), th.color("brand"))
-        cd.text((70, 70), "90-day price history", font=font(600, 40), fill=th.color("muted"))
-        if end_pt and scene.get("current") is not None:
+        spark_box = (70, 170, card_w - 70, 560)
+        # eyebrow: tracked caps + pulsing record dot — "this is live, tracked data"
+        eb_fnt = font(600, 32)
+        dot_pulse = 0.55 + 0.45 * abs(math.sin(tl * 2.2))
+        dot_color = D.mix(th.color("surface"), th.color("accent"), dot_pulse)
+        cd.ellipse((70, 84, 92, 106), fill=dot_color)
+        D.tracked_caps(cd, 112, 78, "90-day tracked price", eb_fnt, th.color("muted"))
+        # current price lives in the top-right corner, in the price color
+        if scene.get("current") is not None:
             cur_fnt = font(800, 76)
             txt = fmt_price(scene["current"])
-            tx = min(end_pt[0] - cur_fnt.getlength(txt) / 2, card_w - 70 - cur_fnt.getlength(txt))
-            cd.text((max(tx, 70), end_pt[1] - 120), txt, font=cur_fnt, fill=th.color("ink"))
+            tx = card_w - 70 - cur_fnt.getlength(txt)
+            cd.text((tx, 130), txt, font=cur_fnt, fill=th.color("accent"))
+            now_fnt = font(600, 30)
+            now_w = D.tracked_caps_width("NOW", now_fnt, 5)
+            D.tracked_caps(cd, card_w - 70 - now_w, 92, "NOW", now_fnt, th.color("accent"))
+
+        # dashed line at the 90-day average: below this line = good price
+        avg = scene.get("avg90")
+        if avg is not None and scene.get("low90") is not None and scene.get("high90") is not None:
+            # recover the normalized y for avg using the same padding rule as normalize_series
+            lo, hi = scene["low90"], scene["high90"]
+            span = (hi - lo) or max(hi * 0.05, 1.0)
+            lo_pad, span_pad = lo - span * 0.12, span * 1.24
+            avg_v = (avg - lo_pad) / span_pad
+            ay = spark_box[3] - avg_v * (spark_box[3] - spark_box[1])
+            D.dashed_hline(cd, spark_box[0], spark_box[2], ay, th.color("star_empty"))
+            D.tracked_caps(cd, spark_box[2] - D.tracked_caps_width("AVG", font(600, 28), 4) ,
+                           ay - 42, "AVG", font(600, 28), th.color("muted"), tracking=4)
+
+        progress = D.anim(tl, 0.4, slot.duration * 0.42)
+        D.draw_sparkline(cd, spark_box, asset.series_xy, progress,
+                         th.color("brand"), th.color("brand_light"), th.color("accent"))
         stats = [("90-DAY LOW", scene.get("low90")), ("AVERAGE", scene.get("avg90")),
                  ("90-DAY HIGH", scene.get("high90"))]
         col_w = (card_w - 140) // 3
@@ -268,17 +323,19 @@ def draw_price(ctx, frame, d, scene, slot, tl):
             if value is None:
                 continue
             x = 70 + i * col_w
-            cd.text((x + (col_w - font(600, 34).getlength(label)) / 2, 640), label,
-                    font=font(600, 34), fill=th.color("muted"))
+            lbl_fnt = font(600, 30)
+            lbl_w = D.tracked_caps_width(label, lbl_fnt, 3)
+            D.tracked_caps(cd, x + (col_w - lbl_w) / 2, 644, label, lbl_fnt,
+                           th.color("muted"), tracking=3)
             vtxt = fmt_price(value)
-            cd.text((x + (col_w - font(700, 56).getlength(vtxt)) / 2, 690), vtxt,
+            cd.text((x + (col_w - font(700, 56).getlength(vtxt)) / 2, 692), vtxt,
                     font=font(700, 56), fill=th.color("ink"))
         verdict = scene.get("verdict")
         if verdict and verdict in th.verdicts:
             vp = D.anim(tl, slot.duration * 0.55, 0.5, ease=D.ease_out_back)
             spec = th.verdicts[verdict]
-            D.pill(cd, card_w // 2, 850, spec["label"], font(800, 52), 44, 24,
-                   th.color(spec["color"]), (255, 255, 255), scale=vp)
+            D.tag_chip(cd, card_w // 2, 828, spec["label"], font(800, 52), 40, 24,
+                       th.color(spec["color"]), (255, 255, 255), scale=vp)
     else:
         cd.text(((card_w - font(600, 44).getlength("We track this price daily")) / 2, 180),
                 "We track this price daily", font=font(600, 44), fill=th.color("muted"))
@@ -292,7 +349,7 @@ def draw_price(ctx, frame, d, scene, slot, tl):
 
     if scene.get("checked_at"):
         note = f"Price checked {_pretty_date(scene['checked_at'])}"
-        cd.text(((card_w - font(500, 34).getlength(note)) / 2, card_h - 80), note,
+        cd.text(((card_w - font(500, 34).getlength(note)) / 2, card_h - 62), note,
                 font=font(500, 34), fill=th.color("muted"))
     frame.paste(card, (cx, cy), D.rounded_mask((card_w, card_h), 44))
 

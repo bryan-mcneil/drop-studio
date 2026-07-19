@@ -63,7 +63,7 @@ def wrap_text(text: str, fnt, max_width: int) -> list[str]:
 # The renderer draws with these and the QA layout probe checks with these —
 # one table, no drift.
 TEXT_SPECS = {
-    ("hook", "text"): (800, 96, 64, 4, "body"),
+    ("hook", "text"): (800, 104, 64, 4, "body"),
     ("product", "product_name"): (700, 54, 42, 2, "card_inner"),
     ("feature", "title"): (700, 62, 46, 2, "feature_text"),
     ("feature", "detail"): (500, 44, 36, 3, "feature_text"),
@@ -126,6 +126,72 @@ def draw_text_lines(draw: ImageDraw.ImageDraw, lines: list[str], fnt, x: int, y:
 
 def rounded_rect(draw: ImageDraw.ImageDraw, box, radius: int, fill=None, outline=None, width: int = 1):
     draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=width)
+
+
+def tracked_caps_width(text: str, fnt, tracking: int = 5) -> float:
+    return sum(fnt.getlength(ch) + tracking for ch in text) - tracking
+
+
+def tracked_caps(draw: ImageDraw.ImageDraw, x: float, y: float, text: str, fnt, fill,
+                 tracking: int = 5) -> float:
+    """Letter-spaced uppercase label (Pillow has no native tracking). Returns end x."""
+    for ch in text.upper():
+        draw.text((x, y), ch, font=fnt, fill=fill)
+        x += fnt.getlength(ch) + tracking
+    return x
+
+
+def tag_chip(draw: ImageDraw.ImageDraw, cx: int, cy: int, text: str, fnt, pad_x: int,
+             pad_y: int, bg, fg, scale: float = 1.0) -> tuple:
+    """Price-tag-shaped chip: pointed left end + punched hole. Deal and verdict
+    chips share this silhouette — both are price judgments."""
+    if scale <= 0:
+        return (cx, cy, cx, cy)
+    ascent, descent = fnt.getmetrics()
+    body_w = (fnt.getlength(text) + pad_x * 2) * scale
+    h = (ascent + descent + pad_y * 2) * scale
+    point_w = h * 0.52
+    total_w = body_w + point_w
+    x0, y0 = cx - total_w / 2, cy - h / 2
+    body = (x0 + point_w, y0, x0 + total_w, y0 + h)
+    draw.rounded_rectangle(body, radius=int(h * 0.28), fill=bg)
+    draw.polygon([(x0, cy), (x0 + point_w + h * 0.1, y0), (x0 + point_w + h * 0.1, y0 + h)],
+                 fill=bg)
+    hole_r = h * 0.09
+    hx = x0 + point_w * 0.78
+    draw.ellipse((hx - hole_r, cy - hole_r, hx + hole_r, cy + hole_r), fill=fg)
+    if scale > 0.55:
+        tx = x0 + point_w + (body_w - fnt.getlength(text) * scale) / 2
+        draw.text((tx, cy - (ascent + descent) / 2), text, font=fnt, fill=fg)
+    return (x0, y0, x0 + total_w, y0 + h)
+
+
+def step_progress(draw: ImageDraw.ImageDraw, cx: int, y: int, total: int, current: int,
+                  done_rgb, todo_rgb, outline_rgb):
+    """Ascending step blocks — the staircase motif doubling as a 1..total counter.
+    Done/current steps are solid; upcoming steps are outlined."""
+    bw, bh, gap, rise = 74, 22, 12, 18
+    total_w = total * bw + (total - 1) * gap
+    x = cx - total_w / 2
+    for i in range(total):
+        yy = y - i * rise
+        if i < current:
+            draw.rounded_rectangle((x, yy, x + bw, yy + bh), radius=8, fill=done_rgb)
+        else:
+            draw.rounded_rectangle((x, yy, x + bw, yy + bh), radius=8,
+                                   outline=todo_rgb, width=3)
+        if i == current - 1:
+            draw.rounded_rectangle((x - 4, yy - 4, x + bw + 4, yy + bh + 4), radius=10,
+                                   outline=outline_rgb, width=2)
+        x += bw + gap
+
+
+def dashed_hline(draw: ImageDraw.ImageDraw, x0: float, x1: float, y: float, fill,
+                 width: int = 3, on: int = 16, off: int = 12):
+    x = x0
+    while x < x1:
+        draw.line((x, y, min(x + on, x1), y), fill=fill, width=width)
+        x += on + off
 
 
 def pill(draw: ImageDraw.ImageDraw, cx: int, cy: int, text: str, fnt, pad_x: int, pad_y: int,

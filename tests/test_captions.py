@@ -3,8 +3,14 @@ from studio.captions import active_caption, chunk_text, scene_captions
 
 def test_chunks_respect_word_cap():
     chunks = chunk_text("The dock swallows seven to nine weeks of dirt before you touch a bag.")
-    assert all(len(c.split()) <= 4 for c in chunks)
+    # normal chunks stay at <=4 words; a merged trailing orphan may reach 6
+    assert all(len(c.split()) <= 6 for c in chunks)
     assert " ".join(chunks).replace("  ", " ").startswith("The dock swallows")
+
+
+def test_no_orphan_trailing_chunk():
+    chunks = chunk_text("The Roborock Q7 M5 Plus is a lesson in why.")
+    assert len(chunks[-1].split()) >= 3
 
 
 def test_chunks_split_on_punctuation():

@@ -20,15 +20,21 @@ class Caption:
 
 
 def chunk_text(text: str, max_words: int = 4) -> list[str]:
-    """Split VO text into caption chunks along punctuation, then word count."""
+    """Split VO text into caption chunks along punctuation, then word count.
+    A trailing 1-2 word orphan is merged into the previous chunk."""
     chunks: list[str] = []
     for clause in re.split(r"(?<=[.,;:!?])\s+", text.strip()):
         clause = clause.strip().strip(",;:").strip()
         if not clause:
             continue
         words = clause.split()
-        for i in range(0, len(words), max_words):
-            chunks.append(" ".join(words[i : i + max_words]))
+        clause_chunks = [
+            " ".join(words[i : i + max_words]) for i in range(0, len(words), max_words)
+        ]
+        if len(clause_chunks) >= 2 and len(clause_chunks[-1].split()) <= 2:
+            clause_chunks[-2] = f"{clause_chunks[-2]} {clause_chunks[-1]}"
+            clause_chunks.pop()
+        chunks.extend(clause_chunks)
     return chunks
 
 

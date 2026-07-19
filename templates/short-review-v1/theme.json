@@ -3,8 +3,9 @@
     "resolution": [1080, 1920],
     "fps": 30,
     "colors": {
-        "bg_top": "#111827",
-        "bg_bottom": "#1e1b4b",
+        "bg_top": "#0b0a1c",
+        "bg_bottom": "#1b1740",
+        "star_empty": "#e5e7eb",
         "surface": "#ffffff",
         "surface_alt": "#eef2ff",
         "ink": "#111827",
