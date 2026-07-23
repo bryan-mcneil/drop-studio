@@ -1,6 +1,6 @@
 """Hero (16:9) scene drawers — the landscape review embed.
 
-Pillow port of the Claude Design source (docs/design/hero-16x9-scenes.jsx,
+Pillow port of the Claude Design source (docs/design/short-scenes.jsx,
 landscape components): 1920x1080, silent, hard cuts, no watermark/CTA.
 Design space equals render space, so every pixel value and timing below is
 transliterated 1:1 from the jsx via D.tween. Two deliberate deviations from

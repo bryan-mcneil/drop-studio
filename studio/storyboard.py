@@ -2,7 +2,8 @@
 
 Deterministic defaults come from the post itself (title, excerpt, pros); the
 optional creative JSON is where Claude's per-video writing (hook line, feature
-captions, VO lines) lands — same split as the site pipeline: model writes
+captions, VO lines, per-feature visual extras under "features": kicker /
+metric / unit / viz) lands — same split as the site pipeline: model writes
 inputs, script assembles the artifact.
 
 Price feed shape (Phase 3 will export this from gadget-drop as
@@ -52,16 +53,24 @@ def build(post: dict, images: list[str] | None = None, price: dict | None = None
     hook_text = creative.get("hook") or first_sentence(post.get("excerpt", title), cap=90)
     feature_vo = creative.get("feature_vo") or {}
     feature_detail = creative.get("feature_detail") or {}
+    # Visual extras per feature (kicker/metric/unit/viz), Claude-written like
+    # the rest of the creative; defaults derive from the pro itself.
+    features_over = creative.get("features") or {}
 
     product_img = images[0] if images else None
+    hook: dict = {
+        "type": "hook",
+        "duration": 5.0,
+        "text": hook_text,
+        "sub": product_name,
+        # the design's hook is a price slam; without a feed it falls back to
+        # the hook line itself
+        "price": price.get("current"),
+        "list_price": price.get("list_price"),
+        "vo": creative.get("hook_vo") or hook_text,
+    }
     scenes: list[dict] = [
-        {
-            "type": "hook",
-            "duration": 5.0,
-            "text": hook_text,
-            "sub": product_name,
-            "vo": creative.get("hook_vo") or hook_text,
-        },
+        {k: v for k, v in hook.items() if v is not None},
         {
             "type": "product",
             "duration": 8.0,
@@ -74,18 +83,22 @@ def build(post: dict, images: list[str] | None = None, price: dict | None = None
         },
     ]
     for i, pro in enumerate(pros):
-        scenes.append(
-            {
-                "type": "feature",
-                "duration": 6.0,
-                "index": i + 1,
-                "count": len(pros),
-                "title": creative.get("feature_titles", {}).get(str(i + 1)) or pro,
-                "detail": feature_detail.get(str(i + 1)),
-                "image": images[i + 1] if len(images) > i + 1 else None,
-                "vo": feature_vo.get(str(i + 1)) or pro,
-            }
-        )
+        over = features_over.get(str(i + 1)) or {}
+        scene = {
+            "type": "feature",
+            "duration": 6.0,
+            "index": i + 1,
+            "count": len(pros),
+            "title": over.get("title") or creative.get("feature_titles", {}).get(str(i + 1)) or pro,
+            "detail": over.get("sub") or feature_detail.get(str(i + 1)),
+            "kicker": over.get("kicker") or "KEY FEATURE",
+            "metric": over.get("metric") or _metric_from(pro),
+            "unit": over.get("unit"),
+            "viz": over.get("viz"),
+            "image": images[i + 1] if len(images) > i + 1 else None,
+            "vo": feature_vo.get(str(i + 1)) or pro,
+        }
+        scenes.append({k: v for k, v in scene.items() if v is not None})
     scenes.append(
         {
             "type": "price",

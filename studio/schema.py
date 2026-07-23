@@ -57,7 +57,8 @@ TEXT_CAPS = {
     ("cta", "text"): 60,
 }
 
-# Hero feature-scene extras (kinetic caption words, metric callout, scan viz).
+# Feature-scene extras, both formats (metric callout, scan viz, kicker; the
+# hero adds kinetic caption words — the Short's caption band is the VO).
 HERO_FEATURE_CAPS = {"kicker": 28, "metric": 12, "unit": 4}
 HERO_VIZ_VALUES = ("scan", None)
 HERO_CAP_MAX_WORDS = 6
@@ -130,8 +131,8 @@ def validate(sb: dict) -> tuple[list[str], list[str]]:
         for field in rules["required_fields"][stype]:
             if scene.get(field) in (None, ""):
                 errors.append(f"{label}: missing required field '{field}'")
-        if fmt == "hero" and stype == "feature":
-            _validate_hero_feature(scene, label, errors)
+        if stype == "feature":
+            _validate_feature_extras(scene, label, errors)
         dur = scene.get("duration", 0)
         if not isinstance(dur, (int, float)) or not (DURATION_RANGE[0] <= dur <= DURATION_RANGE[1]):
             errors.append(f"{label}: duration {dur!r} outside {DURATION_RANGE}")
@@ -169,7 +170,7 @@ def validate(sb: dict) -> tuple[list[str], list[str]]:
     return errors, warnings
 
 
-def _validate_hero_feature(scene: dict, label: str, errors: list[str]) -> None:
+def _validate_feature_extras(scene: dict, label: str, errors: list[str]) -> None:
     for field, cap in HERO_FEATURE_CAPS.items():
         value = scene.get(field)
         if value and len(str(value)) > cap:

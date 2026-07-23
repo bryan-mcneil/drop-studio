@@ -31,6 +31,8 @@ def ease_in_out(u: float) -> float:
 def ease_out_back(u: float) -> float:
     """Slight overshoot — used for chips/pills springing in."""
     u = clamp01(u)
+    if u == 0:
+        return 0.0  # the closed form leaves ~2e-16 dust, which `> 0` gates see
     c1, c3 = 1.70158, 2.70158
     return 1 + c3 * (u - 1) ** 3 + c1 * (u - 1) ** 2
 
@@ -86,10 +88,11 @@ def wrap_text(text: str, fnt, max_width: int) -> list[str]:
 TEXT_SPECS = {
     "short": {
         ("hook", "text"): (800, 104, 64, 4, "body"),
-        ("product", "product_name"): (700, 54, 42, 2, "card_inner"),
-        ("feature", "title"): (700, 62, 46, 2, "feature_text"),
-        ("feature", "detail"): (500, 44, 36, 3, "feature_text"),
-        ("cta", "text"): (500, 54, 40, 1, "body"),
+        ("hook", "sub"): (800, 46, 34, 1, "short_pill"),
+        ("product", "product_name"): (800, 78, 54, 2, "short_card_inner"),
+        ("feature", "title"): (800, 62, 46, 2, "short_feature_text"),
+        ("feature", "detail"): (500, 40, 32, 3, "short_feature_text"),
+        ("cta", "text"): (700, 56, 40, 1, "body"),
     },
     "hero": {
         ("product", "product_name"): (800, 88, 56, 3, "hero_product_detail"),
@@ -105,8 +108,9 @@ def box_width(theme, name: str) -> int:
     side = theme.safe["side"]
     return {
         "body": w - side * 2,
-        "card_inner": 880 - 120,               # product card minus padding
-        "feature_text": (w - side * 2) - 260,  # feature card minus check gutter
+        "short_card_inner": 808,               # product card (920) minus 56px padding
+        "short_feature_text": 648,             # feature card minus padding/check/gap
+        "short_pill": w - side * 2 - 88,       # hook product-name pill minus padding
         "hero_product_detail": 760,            # product card detail column (content-driven, see hero_scenes)
         "hero_feature_text": 528,              # feature card minus check gutter
         "hero_pill": 1400,                     # hook product-name pill
@@ -286,9 +290,11 @@ def _lerp_pt(a, b, u):
 
 
 def star_row(draw: ImageDraw.ImageDraw, cx: int, cy: int, rating: float, size: int, fill, empty,
-             appear: float = 1.0):
+             appear: float = 1.0, gap: int | None = None):
     """appear < 1 staggers a per-star pop-in (scale + rotate); 1.0 is static."""
-    total_w = 5 * size + 4 * (size // 3)
+    if gap is None:
+        gap = size // 3
+    total_w = 5 * size + 4 * gap
     x = cx - total_w / 2 + size / 2
     for i in range(5):
         p = clamp01(appear * 5.5 - i)
@@ -296,7 +302,7 @@ def star_row(draw: ImageDraw.ImageDraw, cx: int, cy: int, rating: float, size: i
             e = ease_out_back(p)
             _star(draw, x, cy, (size / 2) * (0.2 + 0.8 * e), fill if i < rating else empty,
                   rotate_deg=(1 - e) * -25)
-        x += size + size // 3
+        x += size + gap
 
 
 def _star(draw, cx, cy, r, fill, rotate_deg: float = 0.0):
@@ -522,6 +528,19 @@ def tabular_text(draw: ImageDraw.ImageDraw, x: float, y: float, text: str, fnt, 
         draw.text((cx + (cw - fnt.getlength(ch)) / 2, y), ch, font=fnt, fill=fill)
         cx += cw
     return total
+
+
+def kinetic_fit_size(words: list[str], size: int, max_w: int, gap: int = 20,
+                     min_size: int = 40) -> int | None:
+    """Largest kinetic-band font size (stepping down from `size`) at which the
+    words + gaps fit max_w; None when even min_size overflows. The caption
+    renderer and the QA layout probe share this rule."""
+    while size >= min_size:
+        fnt = font(800, size)
+        if sum(fnt.getlength(w) for w in words) + gap * (len(words) - 1) <= max_w:
+            return size
+        size -= 4
+    return None
 
 
 def kinetic_words(frame: Image.Image, words: list[str], hi: list[int], accent_rgb,

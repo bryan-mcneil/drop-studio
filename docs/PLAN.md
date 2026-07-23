@@ -24,9 +24,18 @@ content-source side). This file tracks execution.
   price slam / product card / feature x3 with LiDAR scan viz / 90-day chart
   with count-ups + verdict chip), format-aware schema + QA (`no_audio` gate),
   `build_hero()` + `python -m studio hero [--demo]`, hero goldens, e2e.
-  Design provenance committed at `docs/design/hero-16x9-scenes.jsx`; the
+  Design provenance committed at `docs/design/short-scenes.jsx`; the
   chart plots the real feed series (honesty gates unchanged). Attaching the
   embed to review pages rides Phase 3's feed export.
+- [x] **Short design v3 — studio identity** (2026-07-23, same Design project)
+  The Short's visuals re-ported from the portrait components of
+  `docs/design/short-scenes.jsx`: price-slam hook, product card, feature
+  metric callouts (count-ups, LiDAR scan viz), 90-day chart card, violet CTA
+  with Amazon button. VO captions now render in the design's kinetic
+  word-pop style (auto-fit, shared with the QA probe); the v2 ambient price
+  ladder is retired. Pipeline untouched: VO/music/timing, storyboard schema
+  (hook gains price fields, features gain kicker/metric/unit/viz — all
+  additive), honesty gates, QA. Hero goldens stayed byte-identical.
 - [ ] **Phase 3 — gadget-drop integration** (next)
   `php artisan drop:video-feed {post}` export (post + image paths + PriceIntel
   series in the `sample_price.json` shape), `/drop-video` skill for creative

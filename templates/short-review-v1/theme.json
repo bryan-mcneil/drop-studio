@@ -5,25 +5,37 @@
     "colors": {
         "bg_top": "#0b0a1c",
         "bg_bottom": "#1b1740",
-        "star_empty": "#e5e7eb",
         "surface": "#ffffff",
-        "surface_alt": "#eef2ff",
+        "surface_alt": "#f3f4f6",
+        "surface_soft": "#f9fafb",
         "ink": "#111827",
         "ink_invert": "#f9fafb",
         "muted": "#6b7280",
-        "muted_invert": "#9ca3af",
+        "muted_soft": "#9ca3af",
+        "soft_line": "#d1d5db",
         "brand": "#4f46e5",
         "brand_deep": "#4338ca",
         "brand_light": "#e0e7ff",
-        "accent": "#f97316",
+        "brand_pale": "#c7d2fe",
+        "wordmark_drop": "#818cf8",
+        "glow": "#6366f1",
         "positive": "#059669",
-        "warning": "#d97706",
-        "negative": "#dc2626",
-        "caption_ink": "#ffffff",
-        "caption_bg": "#111827"
+        "positive_bright": "#34d399",
+        "warning": "#fbbf24",
+        "negative": "#e11d48",
+        "strike": "#fb7185",
+        "star": "#fbbf24",
+        "star_empty": "#e5e7eb",
+        "cta_top": "#312e81",
+        "cta_mid": "#4338ca",
+        "cta_bottom": "#6d28d9",
+        "cta_glow": "#a78bfa",
+        "cta_dot": "#c4b5fd",
+        "amazon_start": "#FFB84D",
+        "amazon_end": "#FF9900"
     },
-    "safe_area": {"top": 200, "bottom": 460, "side": 64},
-    "caption": {"y": 1490, "size": 58, "max_words": 4, "pad": 26},
+    "safe_area": {"top": 200, "bottom": 340, "side": 80},
+    "caption": {"y": 1580, "size": 64, "max_words": 4, "pad": 20},
     "watermark": "gadgetdrop.tech",
     "qa": {
         "min_duration_s": 45,
@@ -33,9 +45,9 @@
         "lufs_tolerance": 1.5
     },
     "verdicts": {
-        "lowest": {"label": "LOWEST TRACKED PRICE", "color": "positive"},
-        "good": {"label": "GOOD PRICE", "color": "positive"},
-        "typical": {"label": "TYPICAL PRICE", "color": "warning"},
-        "elevated": {"label": "ELEVATED, WAIT", "color": "negative"}
+        "lowest": {"label": "Lowest tracked price", "color": "positive", "fg": "surface"},
+        "good": {"label": "Below typical price", "color": "positive", "fg": "surface"},
+        "typical": {"label": "Typical price", "color": "warning", "fg": "ink"},
+        "elevated": {"label": "Higher than usual", "color": "negative", "fg": "surface"}
     }
 }

@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 from .captions import chunk_text
-from .draw import TEXT_SPECS, fit_text
+from .draw import TEXT_SPECS, fit_text, kinetic_fit_size
 from .ffmpeg import measure_loudness, probe_media
 from .fonts import font
 from .theme import Theme
@@ -35,10 +35,10 @@ def probe_layout(storyboard: dict, theme: Theme) -> list[str]:
                 violations.append(f"scene[{i}] kinetic caption too wide: '{joined}'")
         vo = scene.get("vo")
         if vo:
-            cap_fnt = font(800, theme.caption["size"])
-            cap_w = theme.resolution[0] - theme.safe["side"] * 2 - theme.caption["pad"] * 2
+            # kinetic caption band: same fit rule the renderer applies
+            cap_w = theme.resolution[0] - theme.safe["side"] * 2
             for chunk in chunk_text(vo, max_words=theme.caption["max_words"]):
-                if cap_fnt.getlength(chunk) > cap_w:
+                if kinetic_fit_size(chunk.split(), theme.caption["size"], cap_w) is None:
                     violations.append(f"scene[{i}].vo caption too wide: '{chunk}'")
     return violations
 

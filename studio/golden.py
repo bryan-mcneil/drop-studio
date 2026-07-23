@@ -19,6 +19,7 @@ GOLDEN_PROBES = [
     ("hook", 0, 0.85),
     ("product", 1, 0.60),
     ("feature", 2, 0.80),
+    ("feature_scan", 4, 0.80),
     ("price", 5, 0.90),
     ("cta", 6, 0.75),
 ]

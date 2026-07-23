@@ -45,7 +45,8 @@ python -m studio demo --voice-backend kokoro    # or `none` for captions-only
 
 Silent 1920x1080 companion video for the top of each review page — same
 data, no VO, no music, hard cuts, 30.5s. Design source:
-`docs/design/hero-16x9-scenes.jsx` (Claude Design export).
+`docs/design/short-scenes.jsx` (Claude Design export; the same file holds
+the Short's portrait scenes).
 
 ```powershell
 python -m studio hero --post ..\gadget-drop\daily-drop\output.json `
