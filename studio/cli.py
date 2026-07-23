@@ -7,6 +7,7 @@
   qa          run the QA gates on a rendered video
   video       full chain: storyboard -> voice -> render -> qa
   demo        full chain on the committed sample fixtures (work/demo/)
+  hero        silent 16:9 review embed: storyboard -> render -> qa (--demo for fixtures)
 """
 
 import argparse
@@ -67,6 +68,15 @@ def main(argv=None) -> int:
             sp.add_argument("--image", action="append", default=[])
         sp.add_argument("--voice-backend", choices=["kokoro", "piper", "openai", "none"],
                         default="kokoro")
+
+    sp = sub.add_parser("hero", help="silent 16:9 hero video for the review page")
+    sp.add_argument("--post", help="path to output.json (or single-post json)")
+    sp.add_argument("--index", type=int, default=0)
+    sp.add_argument("--image", action="append", default=[])
+    sp.add_argument("--price", help="price feed json (required unless --demo)")
+    sp.add_argument("--creative", help="creative overrides json (hero block)")
+    sp.add_argument("--date", default=date.today().isoformat(), help="work/ subdir name")
+    sp.add_argument("--demo", action="store_true", help="use the committed sample fixtures")
 
     sp = sub.add_parser("golden", help="generate golden test frames")
     sp.add_argument("--update", action="store_true", help="overwrite existing goldens")
@@ -234,6 +244,36 @@ def _voice_render_qa(sb_path: Path, voice_backend: str) -> int:
     return 0 if report["passed"] else 1
 
 
+def cmd_hero(args) -> int:
+    from .qa import gates, write_report
+    from .storyboard import build_from_files, build_hero
+
+    if args.demo:
+        fixtures = Path(__file__).parent.parent / "tests" / "fixtures"
+        post = json.loads((fixtures / "sample_post.json").read_text(encoding="utf-8"))
+        price = json.loads((fixtures / "sample_price.json").read_text(encoding="utf-8"))
+        creative = json.loads((fixtures / "sample_creative.json").read_text(encoding="utf-8"))
+        sb = build_hero(post, images=args.image, price=price, creative=creative)
+        work = WORK_DIR / "demo" / "hero"
+    else:
+        if not args.post or not args.price:
+            print("ERROR: hero needs --post and --price (or --demo)", file=sys.stderr)
+            return 2
+        sb = build_from_files(Path(args.post), args.index, args.image, Path(args.price),
+                              Path(args.creative) if args.creative else None, fmt="hero")
+        work = WORK_DIR / args.date / "hero"
+    work.mkdir(parents=True, exist_ok=True)
+    sb_path = work / "storyboard.json"
+    sb_path.write_text(json.dumps(sb, indent=2), encoding="utf-8")
+    out_mp4, sb, theme = _render(str(sb_path), None, None)
+    report = gates(out_mp4, sb, theme)
+    write_report(report, out_mp4.with_name("qa_report.json"))
+    for c in report["checks"]:
+        print(f"  [{'PASS' if c['ok'] else 'FAIL'}] {c['name']}: {c['detail']}")
+    print("QA PASSED" if report["passed"] else "QA FAILED")
+    return 0 if report["passed"] else 1
+
+
 def cmd_golden(args) -> int:
     from .golden import generate
 
@@ -250,5 +290,6 @@ COMMANDS = {
     "qa": cmd_qa,
     "video": cmd_video,
     "demo": cmd_demo,
+    "hero": cmd_hero,
     "golden": cmd_golden,
 }

@@ -41,6 +41,22 @@ python -m studio qa --video work\2026-07-19\final.mp4 --storyboard work\2026-07-
 python -m studio demo --voice-backend kokoro    # or `none` for captions-only
 ```
 
+### Hero (16:9) review embed
+
+Silent 1920x1080 companion video for the top of each review page — same
+data, no VO, no music, hard cuts, 30.5s. Design source:
+`docs/design/hero-16x9-scenes.jsx` (Claude Design export).
+
+```powershell
+python -m studio hero --post ..\gadget-drop\daily-drop\output.json `
+    --image path\to\product.jpg --price work\price.json --creative work\creative.json
+python -m studio hero --demo                    # fixtures -> work\demo\hero\final.mp4
+```
+
+Output: `work/<date>/hero/final.mp4` + `thumb.jpg` + `qa_report.json`. The
+hero QA gates require the *absence* of an audio stream; the price honesty
+gate applies unchanged (no series, no chart, no verdict).
+
 Output per run: `final.mp4` (H.264/AAC, −14 LUFS, ready for Shorts),
 `thumb.jpg`, `qa_report.json`, `storyboard.json`, `vo/` wavs, `mix.wav`.
 

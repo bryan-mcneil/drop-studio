@@ -48,3 +48,39 @@ def test_mini_pipeline(tmp_path):
     report = gates(out, MINI_SB, theme, duration_override=(5, 20))
     failed = [c for c in report["checks"] if not c["ok"]]
     assert report["passed"], f"QA failed: {failed}"
+
+
+HERO_MINI_SB = {
+    "version": 1,
+    "template": "hero-16x9-v1",
+    "slug": "hero-mini-e2e",
+    "scenes": [
+        {"type": "hook", "duration": 3.0, "product_name": "E2E Bot 3000",
+         "price": 199.99, "list_price": 299.99},
+        {"type": "product", "duration": 3.0, "product_name": "E2E Bot 3000",
+         "price": 199.99, "list_price": 299.99, "rating": 4},
+        # no series: exercises the tracking-panel honesty fallback
+        {"type": "price", "duration": 4.0, "current": 199.99,
+         "checked_at": "2026-07-19", "series": []},
+    ],
+}
+
+
+@pytest.mark.slow
+def test_hero_mini_pipeline(tmp_path):
+    theme = load_theme("hero-16x9-v1")
+    tl = build_timeline(HERO_MINI_SB, None, max_words=theme.caption["max_words"])
+    ctx = RenderContext(HERO_MINI_SB, theme, tl)
+
+    out = tmp_path / "final.mp4"
+    stats = render_video(ctx, None, out, progress_every=0)
+    assert out.is_file() and stats["frames"] == int(tl.duration * 30)
+
+    info = probe_media(out)
+    assert (info["width"], info["height"]) == (1920, 1080)
+    assert info["has_audio"] is False
+
+    report = gates(out, HERO_MINI_SB, theme, duration_override=(5, 20))
+    failed = [c for c in report["checks"] if not c["ok"]]
+    assert report["passed"], f"QA failed: {failed}"
+    assert any(c["name"] == "no_audio" and c["ok"] for c in report["checks"])

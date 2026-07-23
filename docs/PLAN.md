@@ -19,6 +19,14 @@ content-source side). This file tracks execution.
   licensed-track manifest; numpy VO ducking; two-pass EBU R128 loudnorm to
   −14 LUFS in the mux. Kokoro-82M runs locally (models gitignored,
   `setup --models`).
+- [x] **Hero 16:9 format** (2026-07-22, from Bryan's Claude Design project)
+  Second template `hero-16x9-v1`: silent 1920x1080 review-page embed (hook
+  price slam / product card / feature x3 with LiDAR scan viz / 90-day chart
+  with count-ups + verdict chip), format-aware schema + QA (`no_audio` gate),
+  `build_hero()` + `python -m studio hero [--demo]`, hero goldens, e2e.
+  Design provenance committed at `docs/design/hero-16x9-scenes.jsx`; the
+  chart plots the real feed series (honesty gates unchanged). Attaching the
+  embed to review pages rides Phase 3's feed export.
 - [ ] **Phase 3 — gadget-drop integration** (next)
   `php artisan drop:video-feed {post}` export (post + image paths + PriceIntel
   series in the `sample_price.json` shape), `/drop-video` skill for creative
