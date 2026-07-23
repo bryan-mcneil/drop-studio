@@ -19,6 +19,8 @@ def mix(a: tuple, b: tuple, t: float) -> tuple[int, int, int]:
 class Theme:
     def __init__(self, data: dict):
         self.data = data
+        self.format = data.get("format", "short")
+        self.audio = data.get("audio", True)
         self.resolution = tuple(data["resolution"])
         self.fps = data["fps"]
         self.colors = {k: hex_rgb(v) for k, v in data["colors"].items()}

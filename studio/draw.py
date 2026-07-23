@@ -59,15 +59,23 @@ def wrap_text(text: str, fnt, max_width: int) -> list[str]:
     return lines
 
 
-# On-screen text specs: (weight, max_size, min_size, max_lines, box_name).
-# The renderer draws with these and the QA layout probe checks with these —
-# one table, no drift.
+# On-screen text specs, keyed by template format: (weight, max_size, min_size,
+# max_lines, box_name). The renderer draws with these and the QA layout probe
+# checks with these — one table, no drift.
 TEXT_SPECS = {
-    ("hook", "text"): (800, 104, 64, 4, "body"),
-    ("product", "product_name"): (700, 54, 42, 2, "card_inner"),
-    ("feature", "title"): (700, 62, 46, 2, "feature_text"),
-    ("feature", "detail"): (500, 44, 36, 3, "feature_text"),
-    ("cta", "text"): (500, 54, 40, 1, "body"),
+    "short": {
+        ("hook", "text"): (800, 104, 64, 4, "body"),
+        ("product", "product_name"): (700, 54, 42, 2, "card_inner"),
+        ("feature", "title"): (700, 62, 46, 2, "feature_text"),
+        ("feature", "detail"): (500, 44, 36, 3, "feature_text"),
+        ("cta", "text"): (500, 54, 40, 1, "body"),
+    },
+    "hero": {
+        ("product", "product_name"): (800, 88, 56, 3, "hero_product_detail"),
+        ("feature", "title"): (800, 64, 46, 3, "hero_feature_text"),
+        ("feature", "sub"): (500, 42, 32, 3, "hero_feature_text"),
+        ("hook", "product_name"): (800, 48, 36, 1, "hero_pill"),
+    },
 }
 
 
@@ -78,6 +86,10 @@ def box_width(theme, name: str) -> int:
         "body": w - side * 2,
         "card_inner": 880 - 120,               # product card minus padding
         "feature_text": (w - side * 2) - 260,  # feature card minus check gutter
+        "hero_product_detail": 724,            # product card detail column
+        "hero_feature_text": 528,              # feature card minus check gutter
+        "hero_pill": 1400,                     # hook product-name pill
+        "hero_full": w - side * 2,
     }[name]
 
 
@@ -87,7 +99,7 @@ def fit_text(theme, scene_type: str, field: str, text: str):
     Returns (font, lines, ok). When even min_size overflows, ok is False and
     the min-size layout is returned so the renderer can still draw best-effort.
     """
-    weight, max_size, min_size, max_lines, box = TEXT_SPECS[(scene_type, field)]
+    weight, max_size, min_size, max_lines, box = TEXT_SPECS[theme.format][(scene_type, field)]
     max_w = box_width(theme, box)
     size = max_size
     while True:

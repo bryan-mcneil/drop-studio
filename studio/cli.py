@@ -155,10 +155,14 @@ def _render(storyboard_path: str, vo_dir: str | None, out: str | None) -> tuple[
     tl = build_timeline(sb, manifest, max_words=theme.caption["max_words"])
     ctx = RenderContext(sb, theme, tl)
 
-    mix_wav = sb_dir / "mix.wav"
-    provenance = build_mix(tl, manifest, sb, vo_path if manifest else None, mix_wav)
-    print(f"audio: {tl.duration:.1f}s, music={provenance}")
     out_mp4 = Path(out) if out else sb_dir / "final.mp4"
+    if theme.audio:
+        mix_wav = sb_dir / "mix.wav"
+        provenance = build_mix(tl, manifest, sb, vo_path if manifest else None, mix_wav)
+        print(f"audio: {tl.duration:.1f}s, music={provenance}")
+    else:
+        mix_wav = None
+        print(f"audio: none ({theme.format} format is silent by design)")
     stats = render_video(ctx, mix_wav, out_mp4)
     export_thumbnail(ctx, out_mp4.with_name("thumb.jpg"))
     print(f"video: {out_mp4} ({stats['frames']} frames, {stats['duration']:.1f}s)")

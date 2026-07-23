@@ -18,14 +18,50 @@ REQUIRED_FIELDS = {
     "cta": ("url",),
 }
 
+HERO_REQUIRED_FIELDS = {
+    "hook": ("product_name", "price"),
+    "product": ("product_name", "price"),
+    "feature": ("title",),
+    "price": ("current",),
+}
+
+# Structural rules per template format. The template's theme.json declares its
+# format; the Short's rules are unchanged, the hero has no cta and ends on the
+# price scene.
+FORMAT_RULES = {
+    "short": {
+        "allowed": SCENE_TYPES,
+        "required": ("hook", "cta"),
+        "first": "hook",
+        "last": "cta",
+        "max_features": 4,
+        "required_fields": REQUIRED_FIELDS,
+    },
+    "hero": {
+        "allowed": ("hook", "product", "feature", "price"),
+        "required": ("hook", "product", "price"),
+        "first": "hook",
+        "last": "price",
+        "max_features": 3,
+        "required_fields": HERO_REQUIRED_FIELDS,
+    },
+}
+
 # Character caps: these are on-screen text, one bad length breaks layout.
 TEXT_CAPS = {
     ("hook", "text"): 90,
     ("product", "product_name"): 60,
     ("feature", "title"): 70,
     ("feature", "detail"): 160,
+    ("feature", "sub"): 140,
     ("cta", "text"): 60,
 }
+
+# Hero feature-scene extras (kinetic caption words, metric callout, scan viz).
+HERO_FEATURE_CAPS = {"kicker": 28, "metric": 12, "unit": 4}
+HERO_VIZ_VALUES = ("scan", None)
+HERO_CAP_MAX_WORDS = 6
+HERO_CAP_MAX_WORD_CHARS = 14
 
 VO_CHARS_PER_SEC = 16  # ~ Kokoro at speed 1.0; used only for sanity caps
 MAX_SCENE_VO_CHARS = 340  # ~ 21s of speech; nothing in a Short should be longer
@@ -55,16 +91,30 @@ def validate(sb: dict) -> tuple[list[str], list[str]]:
     if errors:
         return errors, warnings
 
+    from .theme import load_theme
+
+    try:
+        fmt = load_theme(sb["template"]).format
+    except FileNotFoundError:
+        errors.append(f"unknown template {sb['template']!r}")
+        return errors, warnings
+    rules = FORMAT_RULES.get(fmt)
+    if rules is None:
+        errors.append(f"template {sb['template']!r} declares unknown format {fmt!r}")
+        return errors, warnings
+
     types = [s.get("type") for s in scenes]
-    for expected in ("hook", "cta"):
+    for expected in rules["required"]:
         if expected not in types:
             errors.append(f"storyboard must contain a '{expected}' scene")
-    if types and types[0] != "hook":
-        errors.append("first scene must be the hook")
-    if types and types[-1] != "cta":
-        errors.append("last scene must be the cta")
-    if types.count("feature") > 4:
-        errors.append("more than 4 feature scenes")
+    if types and types[0] != rules["first"]:
+        errors.append(f"first scene must be the {rules['first']}")
+    if types and types[-1] != rules["last"]:
+        errors.append(f"last scene must be the {rules['last']}")
+    if types.count("feature") > rules["max_features"]:
+        errors.append(f"more than {rules['max_features']} feature scenes")
+    if fmt == "hero" and 0 < types.count("feature") != 3:
+        warnings.append("hero storyboards look best with exactly 3 feature scenes")
 
     total_duration = 0.0
     total_vo = 0
@@ -74,9 +124,14 @@ def validate(sb: dict) -> tuple[list[str], list[str]]:
         if stype not in SCENE_TYPES:
             errors.append(f"{label}: unknown type {stype!r}")
             continue
-        for field in REQUIRED_FIELDS[stype]:
+        if stype not in rules["allowed"]:
+            errors.append(f"{label}: scene type {stype!r} not allowed in the {fmt} format")
+            continue
+        for field in rules["required_fields"][stype]:
             if scene.get(field) in (None, ""):
                 errors.append(f"{label}: missing required field '{field}'")
+        if fmt == "hero" and stype == "feature":
+            _validate_hero_feature(scene, label, errors)
         dur = scene.get("duration", 0)
         if not isinstance(dur, (int, float)) or not (DURATION_RANGE[0] <= dur <= DURATION_RANGE[1]):
             errors.append(f"{label}: duration {dur!r} outside {DURATION_RANGE}")
@@ -104,9 +159,33 @@ def validate(sb: dict) -> tuple[list[str], list[str]]:
 
     if total_vo > MAX_TOTAL_VO_CHARS:
         errors.append(f"total vo is {total_vo} chars (cap {MAX_TOTAL_VO_CHARS})")
+    if fmt == "hero" and total_vo:
+        warnings.append("hero storyboards are voiceless; vo fields are ignored")
     if not (TOTAL_RANGE[0] <= total_duration <= TOTAL_RANGE[1]):
         warnings.append(
             f"total storyboard duration {total_duration:.1f}s outside {TOTAL_RANGE}"
             " (VO timing may still pull it in range)"
         )
     return errors, warnings
+
+
+def _validate_hero_feature(scene: dict, label: str, errors: list[str]) -> None:
+    for field, cap in HERO_FEATURE_CAPS.items():
+        value = scene.get(field)
+        if value and len(str(value)) > cap:
+            errors.append(f"{label}: '{field}' is {len(str(value))} chars (cap {cap})")
+    if scene.get("viz") not in HERO_VIZ_VALUES:
+        errors.append(f"{label}: viz {scene.get('viz')!r} not in {HERO_VIZ_VALUES}")
+    cap_words = scene.get("cap")
+    if cap_words is not None:
+        if not isinstance(cap_words, list) or not all(isinstance(w, str) for w in cap_words):
+            errors.append(f"{label}: 'cap' must be a list of words")
+        else:
+            if len(cap_words) > HERO_CAP_MAX_WORDS:
+                errors.append(f"{label}: 'cap' has {len(cap_words)} words (cap {HERO_CAP_MAX_WORDS})")
+            for w in cap_words:
+                if len(w) > HERO_CAP_MAX_WORD_CHARS:
+                    errors.append(f"{label}: cap word '{w}' over {HERO_CAP_MAX_WORD_CHARS} chars")
+            hi = scene.get("cap_hi") or []
+            if not all(isinstance(i, int) and 0 <= i < len(cap_words) for i in hi):
+                errors.append(f"{label}: 'cap_hi' indices out of range for cap of {len(cap_words)}")

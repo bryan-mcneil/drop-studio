@@ -19,7 +19,7 @@ from .theme import Theme
 def probe_layout(storyboard: dict, theme: Theme) -> list[str]:
     violations: list[str] = []
     for i, scene in enumerate(storyboard["scenes"]):
-        for (stype, field) in TEXT_SPECS:
+        for (stype, field) in TEXT_SPECS[theme.format]:
             if scene.get("type") != stype or not scene.get(field):
                 continue
             _, lines, ok = fit_text(theme, stype, field, scene[field])
@@ -28,6 +28,11 @@ def probe_layout(storyboard: dict, theme: Theme) -> list[str]:
                     f"scene[{i}]({stype}).{field}: does not fit even at minimum font size"
                     f" ({len(lines)} lines)"
                 )
+        if theme.format == "hero" and scene.get("cap"):
+            cap_fnt = font(800, theme.caption["size"])
+            joined = "  ".join(scene["cap"])
+            if cap_fnt.getlength(joined) > theme.resolution[0] - theme.safe["side"] * 2:
+                violations.append(f"scene[{i}] kinetic caption too wide: '{joined}'")
         vo = scene.get("vo")
         if vo:
             cap_fnt = font(800, theme.caption["size"])
@@ -58,14 +63,18 @@ def gates(video_path: Path, storyboard: dict, theme: Theme,
           f"{info['fps']} (want {theme.fps})")
     size_mb = video_path.stat().st_size / 1e6
     check("file_size", size_mb <= qa["max_size_mb"], f"{size_mb:.1f} MB (max {qa['max_size_mb']})")
-    check("has_audio", info["has_audio"], "audio stream present")
-
-    if info["has_audio"]:
-        loud = measure_loudness(video_path)
-        lufs = float(loud["input_i"])
-        check("loudness",
-              abs(lufs - qa["target_lufs"]) <= qa["lufs_tolerance"],
-              f"{lufs:.1f} LUFS (target {qa['target_lufs']} +/-{qa['lufs_tolerance']})")
+    if qa.get("require_audio", True):
+        check("has_audio", info["has_audio"], "audio stream present")
+        if info["has_audio"]:
+            loud = measure_loudness(video_path)
+            lufs = float(loud["input_i"])
+            check("loudness",
+                  abs(lufs - qa["target_lufs"]) <= qa["lufs_tolerance"],
+                  f"{lufs:.1f} LUFS (target {qa['target_lufs']} +/-{qa['lufs_tolerance']})")
+    else:
+        # Silent-by-design format: a stray audio stream is the failure.
+        check("no_audio", not info["has_audio"],
+              "silent as designed" if not info["has_audio"] else "unexpected audio stream")
 
     violations = probe_layout(storyboard, theme)
     check("text_layout", not violations, "; ".join(violations) or "all text fits")

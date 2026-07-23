@@ -49,6 +49,13 @@ class RenderContext:
                 a.series_xy = normalize_series(scene["series"], scene.get("checked_at"))
                 self.ladder_xy = a.series_xy
             self.assets[slot.index] = a
+        if theme.format == "hero":
+            from . import hero_scenes
+
+            self.drawers = hero_scenes.SCENE_DRAWERS
+            hero_scenes.prepare(self)
+        else:
+            self.drawers = SCENE_DRAWERS
 
 
 def normalize_series(series: list, checked_at: str | None, window_days: int = 90) -> list:
@@ -86,14 +93,17 @@ def fmt_price(value) -> str:
 def render_frame(ctx: RenderContext, t: float) -> Image.Image:
     frame = ctx.bg.copy()
     d = ImageDraw.Draw(frame)
-    _ambient_ladder(ctx, d, t)
+    short_chrome = ctx.theme.format == "short"
+    if short_chrome:
+        _ambient_ladder(ctx, d, t)
     slot = ctx.tl.slot_at(t)
     tl = t - slot.start
     scene = slot.scene
-    fn = SCENE_DRAWERS[scene["type"]]
+    fn = ctx.drawers[scene["type"]]
     fn(ctx, frame, d, scene, slot, tl)
-    _watermark(ctx, d, t)
-    _caption(ctx, frame, t)
+    if short_chrome:
+        _watermark(ctx, d, t)
+        _caption(ctx, frame, t)
     return frame
 
 
@@ -461,30 +471,34 @@ def build_mix(timeline: Timeline, vo_manifest: dict | None, storyboard: dict,
 
 # ---------------- video ----------------
 
-def render_video(ctx: RenderContext, mix_wav: Path, out_mp4: Path,
+def render_video(ctx: RenderContext, mix_wav: Path | None, out_mp4: Path,
                  progress_every: int = 300) -> dict:
+    """Stream frames into ffmpeg. mix_wav=None renders a silent video (-an)."""
     import subprocess
 
     w, h = ctx.size
     fps = ctx.theme.fps
     total_frames = int(round(ctx.tl.duration * fps))
-    measured = measure_loudness(mix_wav)
-    loudnorm = (
-        "loudnorm=I=-14:TP=-1.0:LRA=11:linear=true"
-        f":measured_I={measured['input_i']}:measured_TP={measured['input_tp']}"
-        f":measured_LRA={measured['input_lra']}:measured_thresh={measured['input_thresh']}"
-        f":offset={measured['target_offset']}"
-    )
     cmd = [
         ffmpeg_exe(), "-hide_banner", "-y",
         "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}", "-r", str(fps), "-i", "pipe:",
-        "-i", str(mix_wav),
-        "-af", loudnorm,
-        "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
-        "-movflags", "+faststart", "-shortest",
-        str(out_mp4),
     ]
+    if mix_wav is not None:
+        measured = measure_loudness(mix_wav)
+        loudnorm = (
+            "loudnorm=I=-14:TP=-1.0:LRA=11:linear=true"
+            f":measured_I={measured['input_i']}:measured_TP={measured['input_tp']}"
+            f":measured_LRA={measured['input_lra']}:measured_thresh={measured['input_thresh']}"
+            f":offset={measured['target_offset']}"
+        )
+        cmd += ["-i", str(mix_wav), "-af", loudnorm]
+    cmd += ["-c:v", "libx264", "-preset", "medium", "-crf", "19", "-pix_fmt", "yuv420p"]
+    if mix_wav is not None:
+        cmd += ["-c:a", "aac", "-b:a", "192k", "-ar", "48000",
+                "-movflags", "+faststart", "-shortest"]
+    else:
+        cmd += ["-an", "-movflags", "+faststart"]
+    cmd += [str(out_mp4)]
     log_path = out_mp4.with_suffix(".ffmpeg.log")
     with open(log_path, "wb") as log:
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
