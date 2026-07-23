@@ -37,3 +37,17 @@ def reference_context():
     from studio.golden import build_reference_context
 
     return build_reference_context()
+
+
+@pytest.fixture(scope="session")
+def hero_storyboard(sample_post, sample_price, sample_creative):
+    from studio.storyboard import build_hero
+
+    return build_hero(sample_post, images=[], price=sample_price, creative=sample_creative)
+
+
+@pytest.fixture(scope="session")
+def hero_reference_context():
+    from studio.golden import build_hero_reference_context
+
+    return build_hero_reference_context()

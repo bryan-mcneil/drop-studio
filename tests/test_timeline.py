@@ -38,3 +38,10 @@ def test_cta_scene_gets_no_captions(demo_storyboard):
     cta = tl.slots[-1]
     assert cta.scene["type"] == "cta"
     assert all(c.end <= cta.start + 1e-6 for c in tl.captions)
+
+
+def test_hero_timeline_uses_design_durations(hero_storyboard):
+    tl = build_timeline(hero_storyboard, None)
+    assert [s.duration for s in tl.slots] == [4.5, 6.0, 4.0, 4.0, 4.0, 8.0]
+    assert abs(tl.duration - 30.5) < 1e-9
+    assert tl.captions == []

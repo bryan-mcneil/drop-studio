@@ -23,6 +23,23 @@ GOLDEN_PROBES = [
     ("cta", 6, 0.75),
 ]
 
+# Hero probes: slot 3 is the scan-viz feature (conic sweep + rings + count-up);
+# price at 0.9 (t=7.2s) covers the finished chart, ping halo, verdict chip and
+# fine print.
+HERO_GOLDEN_PROBES = [
+    ("hero_hook", 0, 0.85),
+    ("hero_product", 1, 0.60),
+    ("hero_feature", 3, 0.80),
+    ("hero_price", 5, 0.90),
+]
+
+
+def _fixtures():
+    post = json.loads((FIXTURES / "sample_post.json").read_text(encoding="utf-8"))
+    price = json.loads((FIXTURES / "sample_price.json").read_text(encoding="utf-8"))
+    creative = json.loads((FIXTURES / "sample_creative.json").read_text(encoding="utf-8"))
+    return post, price, creative
+
 
 def build_reference_context():
     from .renderer import RenderContext
@@ -32,9 +49,7 @@ def build_reference_context():
     from .voice import synthesize_scenes
     import tempfile
 
-    post = json.loads((FIXTURES / "sample_post.json").read_text(encoding="utf-8"))
-    price = json.loads((FIXTURES / "sample_price.json").read_text(encoding="utf-8"))
-    creative = json.loads((FIXTURES / "sample_creative.json").read_text(encoding="utf-8"))
+    post, price, creative = _fixtures()
     sb = build(post, images=[], price=price, creative=creative)
     with tempfile.TemporaryDirectory() as td:
         manifest = synthesize_scenes(sb, Path(td), backend="none")
@@ -43,18 +58,32 @@ def build_reference_context():
     return RenderContext(sb, theme, tl)
 
 
+def build_hero_reference_context():
+    from .renderer import RenderContext
+    from .storyboard import build_hero
+    from .theme import load_theme
+    from .timeline import build_timeline
+
+    post, price, creative = _fixtures()
+    sb = build_hero(post, images=[], price=price, creative=creative)
+    theme = load_theme(sb["template"])
+    tl = build_timeline(sb, None, max_words=theme.caption["max_words"])
+    return RenderContext(sb, theme, tl)
+
+
 def generate(update: bool = False) -> list[Path]:
     from .renderer import render_frame
 
-    ctx = build_reference_context()
     GOLDEN_DIR.mkdir(parents=True, exist_ok=True)
     written = []
-    for name, slot_i, frac in GOLDEN_PROBES:
-        slot = ctx.tl.slots[slot_i]
-        frame = render_frame(ctx, slot.start + slot.duration * frac)
-        out = GOLDEN_DIR / f"{name}.png"
-        if out.exists() and not update:
-            continue
-        frame.save(out)
-        written.append(out)
+    for ctx, probes in ((build_reference_context(), GOLDEN_PROBES),
+                        (build_hero_reference_context(), HERO_GOLDEN_PROBES)):
+        for name, slot_i, frac in probes:
+            slot = ctx.tl.slots[slot_i]
+            frame = render_frame(ctx, slot.start + slot.duration * frac)
+            out = GOLDEN_DIR / f"{name}.png"
+            if out.exists() and not update:
+                continue
+            frame.save(out)
+            written.append(out)
     return written

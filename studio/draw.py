@@ -107,7 +107,7 @@ def box_width(theme, name: str) -> int:
         "body": w - side * 2,
         "card_inner": 880 - 120,               # product card minus padding
         "feature_text": (w - side * 2) - 260,  # feature card minus check gutter
-        "hero_product_detail": 724,            # product card detail column
+        "hero_product_detail": 760,            # product card detail column (content-driven, see hero_scenes)
         "hero_feature_text": 528,              # feature card minus check gutter
         "hero_pill": 1400,                     # hook product-name pill
         "hero_full": w - side * 2,
@@ -159,6 +159,23 @@ def draw_text_lines(draw: ImageDraw.ImageDraw, lines: list[str], fnt, x: int, y:
 
 def rounded_rect(draw: ImageDraw.ImageDraw, box, radius: int, fill=None, outline=None, width: int = 1):
     draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=width)
+
+
+def tracked_text_width(fnt, text: str, tracking: float) -> float:
+    """Width of text drawn with per-char tracking (negative tightens — the
+    design's -0.02/-0.03em letter-spacing on big type)."""
+    if not text:
+        return 0.0
+    return sum(fnt.getlength(ch) for ch in text) + tracking * (len(text) - 1)
+
+
+def tracked_text(draw: ImageDraw.ImageDraw, x: float, y: float, text: str, fnt, fill,
+                 tracking: float) -> float:
+    """Draw text with per-char tracking (supports negative). Returns end x."""
+    for ch in text:
+        draw.text((x, y), ch, font=fnt, fill=fill)
+        x += fnt.getlength(ch) + tracking
+    return x - tracking if text else x
 
 
 def tracked_caps_width(text: str, fnt, tracking: int = 5) -> float:
@@ -294,7 +311,7 @@ def _star(draw, cx, cy, r, fill, rotate_deg: float = 0.0):
 
 # ---------- background ----------
 
-def gradient_bg(size: tuple, top_rgb, bottom_rgb) -> Image.Image:
+def gradient_bg(size: tuple, top_rgb, bottom_rgb, halo: bool = True) -> Image.Image:
     w, h = size
     col = Image.new("RGB", (1, h))
     px = col.load()
@@ -302,6 +319,8 @@ def gradient_bg(size: tuple, top_rgb, bottom_rgb) -> Image.Image:
         u = y / (h - 1)
         px[0, y] = tuple(round(top_rgb[i] + (bottom_rgb[i] - top_rgb[i]) * u) for i in range(3))
     bg = col.resize((w, h))
+    if not halo:
+        return bg
     glow = Image.new("L", (w, h), 0)
     gd = ImageDraw.Draw(glow)
     gd.ellipse((w * -0.35, h * -0.18, w * 1.35, h * 0.45), fill=46)
@@ -444,7 +463,8 @@ def shadow_pad(sigma: int = 30) -> int:
 
 
 def text_glow_sprite(text: str, weight: int, size: int, fill_rgb, glow_rgb,
-                     glow_alpha: int = 140, sigma: int | None = None) -> tuple:
+                     glow_alpha: int = 140, sigma: int | None = None,
+                     tracking: float = 0.0) -> tuple:
     """Crisp text over a blurred tinted halo (CSS text-shadow). Returns
     (RGBA sprite, pad): the text's origin sits at (pad, pad) in the sprite.
     Scale animations should resize this sprite, never rebuild it."""
@@ -452,10 +472,10 @@ def text_glow_sprite(text: str, weight: int, size: int, fill_rgb, glow_rgb,
     ascent, descent = fnt.getmetrics()
     sigma = sigma or max(size // 8, 8)
     pad = sigma * 3
-    w = int(math.ceil(fnt.getlength(text))) + pad * 2
+    w = int(math.ceil(tracked_text_width(fnt, text, tracking))) + pad * 2
     h = ascent + descent + pad * 2
     mask = Image.new("L", (w, h), 0)
-    ImageDraw.Draw(mask).text((pad, pad), text, font=fnt, fill=255)
+    tracked_text(ImageDraw.Draw(mask), pad, pad, text, fnt, 255, tracking)
     glow_mask = mask.filter(ImageFilter.GaussianBlur(sigma)).point(
         lambda v: int(v * glow_alpha / 255))
     glow_layer = Image.new("RGBA", (w, h), (*glow_rgb, 0))

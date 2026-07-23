@@ -14,5 +14,37 @@
         "3": "Accurate multi-floor maps, room-by-room cleaning, free app."
     },
     "price_vo": "It launched at three fifty nine, but the street price tells the real story. Right now it is two forty nine ninety nine, below the ninety day average. That's a good price.",
-    "cta_vo": "Full review and live price history at gadget drop dot tech. Link in the description."
+    "cta_vo": "Full review and live price history at gadget drop dot tech. Link in the description.",
+    "hero": {
+        "features": {
+            "1": {
+                "kicker": "POWER",
+                "metric": "10,000",
+                "unit": "Pa",
+                "title": "Serious suction for the price",
+                "sub": "Strong on hard floors and low-pile rugs. Fine on thin carpet.",
+                "cap": ["10,000", "PASCALS"],
+                "cap_hi": [0]
+            },
+            "2": {
+                "kicker": "SMARTS",
+                "metric": "360",
+                "unit": "°",
+                "viz": "scan",
+                "title": "Precise LiDAR mapping",
+                "sub": "Multi-floor maps and room-by-room cleaning.",
+                "cap": ["MAPS", "EVERY", "ROOM"],
+                "cap_hi": []
+            },
+            "3": {
+                "kicker": "NO CATCH",
+                "metric": "$0",
+                "unit": "/mo",
+                "title": "No subscription, ever",
+                "sub": "Every feature included. Nothing behind a paywall.",
+                "cap": ["ZERO", "SUBSCRIPTION"],
+                "cap_hi": [0]
+            }
+        }
+    }
 }

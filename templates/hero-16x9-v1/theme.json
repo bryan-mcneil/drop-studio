@@ -1,0 +1,47 @@
+{
+    "name": "hero-16x9-v1",
+    "format": "hero",
+    "audio": false,
+    "resolution": [1920, 1080],
+    "fps": 30,
+    "colors": {
+        "bg_top": "#0b0a1c",
+        "bg_bottom": "#1b1740",
+        "surface": "#ffffff",
+        "surface_alt": "#f3f4f6",
+        "surface_soft": "#f9fafb",
+        "ink": "#111827",
+        "ink_invert": "#f9fafb",
+        "muted": "#6b7280",
+        "muted_soft": "#9ca3af",
+        "soft_line": "#d1d5db",
+        "brand": "#4f46e5",
+        "brand_deep": "#4338ca",
+        "brand_light": "#e0e7ff",
+        "brand_pale": "#c7d2fe",
+        "wordmark_drop": "#818cf8",
+        "glow": "#6366f1",
+        "positive": "#059669",
+        "positive_bright": "#34d399",
+        "warning": "#fbbf24",
+        "negative": "#e11d48",
+        "strike": "#fb7185",
+        "star": "#fbbf24",
+        "star_empty": "#e5e7eb"
+    },
+    "safe_area": {"top": 80, "bottom": 80, "side": 110},
+    "caption": {"y": 946, "size": 52, "max_words": 6, "pad": 20},
+    "watermark": null,
+    "qa": {
+        "min_duration_s": 28,
+        "max_duration_s": 35,
+        "max_size_mb": 60,
+        "require_audio": false
+    },
+    "verdicts": {
+        "lowest": {"label": "Lowest tracked price", "color": "positive", "fg": "surface"},
+        "good": {"label": "Below typical price", "color": "positive", "fg": "surface"},
+        "typical": {"label": "Typical price", "color": "warning", "fg": "ink"},
+        "elevated": {"label": "Higher than usual", "color": "negative", "fg": "surface"}
+    }
+}

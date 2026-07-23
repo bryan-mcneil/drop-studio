@@ -21,7 +21,7 @@ import json
 import re
 from pathlib import Path
 
-from .config import DEFAULT_TEMPLATE
+from .config import DEFAULT_TEMPLATE, HERO_TEMPLATE
 from .schema import validate
 
 SITE_URL = "https://gadgetdrop.tech"
@@ -147,8 +147,90 @@ def _say_price(value: float) -> str:
     return f"{dollars} {cents:02d}"
 
 
+def build_hero(post: dict, images: list[str] | None = None, price: dict | None = None,
+               creative: dict | None = None) -> dict:
+    """Storyboard for the silent 16:9 hero embed: hook / product / feature x3 /
+    price, fixed design durations (4.5 / 6 / 4 / 8 = 30.5s), no VO, no music."""
+    creative = creative or {}
+    images = images or []
+    price = price or {}
+    if price.get("current") is None:
+        raise ValueError("hero video needs a price feed with 'current' (the hook is a price slam)")
+    title = post["title"]
+    product_name = creative.get("product_name") or product_name_from_title(title)
+    slug = post.get("seo", {}).get("slug") or re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    pros = (post.get("pros") or [])[:3]
+    hero_creative = creative.get("hero") or {}
+    feat_over = hero_creative.get("features") or {}
+    feature_detail = creative.get("feature_detail") or {}
+
+    scenes: list[dict] = [
+        {
+            "type": "hook",
+            "duration": 4.5,
+            "product_name": product_name,
+            "price": price["current"],
+            "list_price": price.get("list_price"),
+        },
+        {
+            "type": "product",
+            "duration": 6.0,
+            "product_name": product_name,
+            "image": images[0] if images else None,
+            "price": price["current"],
+            "list_price": price.get("list_price"),
+            "rating": post.get("rating"),
+        },
+    ]
+    for i, pro in enumerate(pros):
+        over = feat_over.get(str(i + 1)) or {}
+        scene = {
+            "type": "feature",
+            "duration": 4.0,
+            "index": i + 1,
+            "count": len(pros),
+            "title": over.get("title") or creative.get("feature_titles", {}).get(str(i + 1)) or pro,
+            "sub": over.get("sub") or feature_detail.get(str(i + 1)),
+            "kicker": over.get("kicker") or "KEY FEATURE",
+            "metric": over.get("metric") or _metric_from(pro),
+            "unit": over.get("unit"),
+            "viz": over.get("viz"),
+            "cap": over.get("cap"),
+            "cap_hi": over.get("cap_hi"),
+        }
+        scenes.append({k: v for k, v in scene.items() if v is not None})
+    scenes.append(
+        {
+            "type": "price",
+            "duration": 8.0,
+            "current": price["current"],
+            "list_price": price.get("list_price"),
+            "verdict": price.get("verdict"),
+            "low90": price.get("low90"),
+            "avg90": price.get("avg90"),
+            "high90": price.get("high90"),
+            "series": price.get("series") or [],
+            "checked_at": price.get("checked_at"),
+        }
+    )
+    return {
+        "version": 1,
+        "template": hero_creative.get("template", HERO_TEMPLATE),
+        "slug": slug,
+        "product_name": product_name,
+        "scenes": scenes,
+        "meta": {"post_url": f"{SITE_URL}/posts/{slug}", "title": title},
+    }
+
+
+def _metric_from(pro: str) -> str | None:
+    """First numeric token in a pro ('Strong 10,000Pa suction' -> '10,000')."""
+    m = re.search(r"\d[\d,]*", pro)
+    return m.group(0) if m else None
+
+
 def build_from_files(post_path: Path, index: int, images: list[str], price_path: Path | None,
-                     creative_path: Path | None) -> dict:
+                     creative_path: Path | None, fmt: str = "short") -> dict:
     posts = json.loads(Path(post_path).read_text(encoding="utf-8"))
     if isinstance(posts, dict):
         posts = [posts]
@@ -159,7 +241,8 @@ def build_from_files(post_path: Path, index: int, images: list[str], price_path:
     post = pool[index]
     price = json.loads(Path(price_path).read_text(encoding="utf-8")) if price_path else None
     creative = json.loads(Path(creative_path).read_text(encoding="utf-8")) if creative_path else None
-    sb = build(post, images=images, price=price, creative=creative)
+    builder = build_hero if fmt == "hero" else build
+    sb = builder(post, images=images, price=price, creative=creative)
     errors, warnings = validate(sb)
     if errors:
         raise ValueError("storyboard failed validation:\n  " + "\n  ".join(errors))

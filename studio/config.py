@@ -15,6 +15,7 @@ WORK_DIR = REPO_ROOT / "work"
 GADGET_DROP = Path(os.environ.get("GADGET_DROP_PATH", REPO_ROOT.parent / "gadget-drop"))
 
 DEFAULT_TEMPLATE = "short-review-v1"
+HERO_TEMPLATE = "hero-16x9-v1"
 
 KOKORO_MODEL = MODELS_DIR / "kokoro-v1.0.onnx"
 KOKORO_VOICES = MODELS_DIR / "voices-v1.0.bin"
