@@ -296,23 +296,52 @@ def star_row(draw: ImageDraw.ImageDraw, cx: int, cy: int, rating: float, size: i
         gap = size // 3
     total_w = 5 * size + 4 * gap
     x = cx - total_w / 2 + size / 2
+    full = int(rating)
+    frac = rating - full
     for i in range(5):
         p = clamp01(appear * 5.5 - i)
         if p > 0:
             e = ease_out_back(p)
-            _star(draw, x, cy, (size / 2) * (0.2 + 0.8 * e), fill if i < rating else empty,
-                  rotate_deg=(1 - e) * -25)
+            r_i = (size / 2) * (0.2 + 0.8 * e)
+            rot = (1 - e) * -25
+            if i < full:
+                _star(draw, x, cy, r_i, fill, rotate_deg=rot)
+            elif i == full and frac >= 0.25:
+                # Fractional rating: empty star under a horizontally clipped
+                # filled one (4.5 must not read as 5 — honesty in the stars too).
+                _star(draw, x, cy, r_i, empty, rotate_deg=rot)
+                _star(draw, x, cy, r_i, fill, rotate_deg=rot, clip_frac=min(frac, 0.75))
+            else:
+                _star(draw, x, cy, r_i, empty, rotate_deg=rot)
         x += size + gap
 
 
-def _star(draw, cx, cy, r, fill, rotate_deg: float = 0.0):
+def _star(draw, cx, cy, r, fill, rotate_deg: float = 0.0, clip_frac: float | None = None):
     pts = []
     rot = math.radians(rotate_deg)
     for i in range(10):
         angle = -math.pi / 2 + i * math.pi / 5 + rot
         rad = r if i % 2 == 0 else r * 0.45
         pts.append((cx + rad * math.cos(angle), cy + rad * math.sin(angle)))
+    if clip_frac is not None:
+        pts = _clip_polygon_x(pts, cx - r + 2 * r * clip_frac)
+        if len(pts) < 3:
+            return
     draw.polygon(pts, fill=fill)
+
+
+def _clip_polygon_x(pts: list[tuple], x_max: float) -> list[tuple]:
+    """Sutherland-Hodgman against the half-plane x <= x_max (partial stars)."""
+    out = []
+    for i, cur in enumerate(pts):
+        nxt = pts[(i + 1) % len(pts)]
+        cur_in, nxt_in = cur[0] <= x_max, nxt[0] <= x_max
+        if cur_in:
+            out.append(cur)
+        if cur_in != nxt_in:
+            t = (x_max - cur[0]) / (nxt[0] - cur[0])
+            out.append((x_max, cur[1] + t * (nxt[1] - cur[1])))
+    return out
 
 
 # ---------- background ----------
@@ -362,6 +391,11 @@ def load_product_image(path: str | None) -> Image.Image | None:
     if not p.is_file():
         return None
     img = Image.open(p)
+    # Keep transparency when the source has it: the product drawers paste
+    # through the alpha channel, so a transparent-background pack shot sits
+    # directly on the photo panel. Flattening here would matte it black.
+    if "A" in img.getbands() or (img.mode == "P" and "transparency" in img.info):
+        return img.convert("RGBA")
     return img.convert("RGB")
 
 
